@@ -24,10 +24,22 @@ def _load_model() -> SentenceTransformer:
     Load and cache the embedding model.
     lru_cache ensures this runs exactly once per process even if called from
     multiple modules. The model stays in memory for the lifetime of the worker.
+    Falls back to CPU if the specified device is unavailable.
     """
+    device = settings.embedding_device
+
+    # Try to use requested device, fall back to CPU if unavailable
+    try:
+        if device == "cuda":
+            import torch
+            if not torch.cuda.is_available():
+                device = "cpu"
+    except (ImportError, RuntimeError):
+        device = "cpu"
+
     model = SentenceTransformer(
         settings.embedding_model,
-        device=settings.embedding_device,
+        device=device,
     )
     actual_dims = model.get_sentence_embedding_dimension()
     if actual_dims != EMBEDDING_DIMS:

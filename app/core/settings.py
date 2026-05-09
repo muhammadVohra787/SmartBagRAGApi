@@ -97,6 +97,11 @@ class Settings(BaseSettings):
         alias="EMBEDDING_DIMENSION",
     )
 
+    embedding_device: str = Field(
+        default="cuda",
+        alias="EMBEDDING_DEVICE",
+    )
+
     # ============================================
     # Retrieval
     # ============================================
