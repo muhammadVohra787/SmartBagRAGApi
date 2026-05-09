@@ -33,7 +33,7 @@ import os
 import fitz  # PyMuPDF
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from app.models.models import (
+from app.models import (
     BatchIngestionResult,
     IngestStatus,
     NearDuplicate,

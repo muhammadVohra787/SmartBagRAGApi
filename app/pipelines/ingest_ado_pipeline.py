@@ -33,7 +33,7 @@ The route validates the API key, calls this function, returns the result.
 
 import logging
 
-from app.models.models import (
+from app.models import (
     ADOPayload,
     ADOWorkItemRaw,
     IngestStatus,

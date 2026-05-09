@@ -34,7 +34,7 @@ import re
 
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 
-from app.models.models import (
+from app.models import (
     BatchIngestionResult,
     IngestStatus,
     MarkdownPayload,

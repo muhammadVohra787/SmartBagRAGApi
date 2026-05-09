@@ -27,8 +27,8 @@ from qdrant_client.models import (
     VectorParams,
 )
 
-from config import settings
-from models import (
+from app.core.settings import settings
+from app.models import (
     EMBEDDING_DIMS,
     SIMILARITY_DUPE_THRESHOLD,
     BasePayload,
@@ -42,9 +42,14 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _make_client() -> QdrantClient:
+    from urllib.parse import urlparse
+
+    url = settings.qdrant_url
+    parsed = urlparse(url)
+
     kwargs: dict[str, Any] = {
-        "host": settings.qdrant_host,
-        "port": settings.qdrant_port,
+        "host": parsed.hostname or "localhost",
+        "port": parsed.port or 6333,
     }
     if settings.qdrant_api_key:
         kwargs["api_key"] = settings.qdrant_api_key
@@ -72,7 +77,7 @@ def ensure_collection() -> None:
     Safe to call on every startup — does nothing if already created.
     """
     client = get_client()
-    collection = settings.qdrant_collection
+    collection = settings.qdrant_collection_name
 
     existing = {c.name for c in client.get_collections().collections}
     if collection not in existing:
@@ -116,7 +121,7 @@ def upsert_point(
     """
     client = get_client()
     client.upsert(
-        collection_name=settings.qdrant_collection,
+        collection_name=settings.qdrant_collection_name,
         points=[
             PointStruct(
                 id=point_id,
@@ -139,7 +144,7 @@ def get_payload_by_id(point_id: str) -> dict[str, Any] | None:
     """
     client = get_client()
     results = client.retrieve(
-        collection_name=settings.qdrant_collection,
+        collection_name=settings.qdrant_collection_name,
         ids=[point_id],
         with_payload=True,
     )
@@ -160,7 +165,7 @@ def check_near_duplicates(
     """
     client = get_client()
     results: list[ScoredPoint] = client.search(
-        collection_name=settings.qdrant_collection,
+        collection_name=settings.qdrant_collection_name,
         query_vector=vector,
         limit=top_k,
         with_payload=["title", "source_type"],
@@ -218,7 +223,7 @@ def search(
     filt = Filter(must=must_conditions) if must_conditions else None
 
     return client.search(
-        collection_name=settings.qdrant_collection,
+        collection_name=settings.qdrant_collection_name,
         query_vector=query_vector,
         limit=top_k,
         query_filter=filt,
@@ -244,7 +249,7 @@ def delete_by_filename(filename: str) -> int:
     client = get_client()
     filt = Filter(must=[FieldCondition(key="filename", match=MatchValue(value=filename))])
     result = client.delete(
-        collection_name=settings.qdrant_collection,
+        collection_name=settings.qdrant_collection_name,
         points_selector=filt,  # type: ignore[arg-type]
     )
     deleted = result.result if hasattr(result, "result") else 0
@@ -255,7 +260,7 @@ def delete_by_filename(filename: str) -> int:
 def delete_point(point_id: str) -> None:
     client = get_client()
     client.delete(
-        collection_name=settings.qdrant_collection,
+        collection_name=settings.qdrant_collection_name,
         points_selector=PointIdsList(points=[point_id]),
     )
     log.info("Deleted point '%s'", point_id)

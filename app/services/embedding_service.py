@@ -15,7 +15,7 @@ from functools import lru_cache
 from sentence_transformers import SentenceTransformer
 
 from app.core.settings import settings
-from app.models.models import EMBEDDING_DIMS
+from app.models import EMBEDDING_DIMS
 
 
 @lru_cache(maxsize=1)

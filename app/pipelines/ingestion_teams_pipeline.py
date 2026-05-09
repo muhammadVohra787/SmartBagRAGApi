@@ -45,7 +45,7 @@ import logging
 import html2text
 import tiktoken
 
-from app.models.models import (
+from app.models import (
     GraphMessage,
     IngestStatus,
     IngestionResult,
