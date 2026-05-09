@@ -59,6 +59,23 @@ Thread:
 {thread_text}
 """
 
+ANSWER_SYSTEM = (
+    "You are a helpful assistant that answers questions based solely on the provided context documents. "
+    "Your answers must be grounded in the given context. "
+    "If the answer is not in the context, clearly state that you don't have enough information. "
+    "Always cite which documents you used by referring to their titles."
+)
+
+ANSWER_USER = """\
+Context Documents:
+
+{context}
+
+Question: {query}
+
+Please answer the question using only the information from the context documents above. Cite your sources by mentioning the document titles.
+"""
+
 # ---------------------------------------------------------------------------
 # Summarisation (Teams ingestion)
 # ---------------------------------------------------------------------------
@@ -72,7 +89,8 @@ def summarise_thread(thread_text: str) -> str:
     response = client.chat.completions.create(
         model=settings.azure_openai_deployment_name,
         max_tokens=800,
-        temperature=0.2,          # low temperature — we want factual extraction, not creativity
+        temperature=settings.llm_temperature,
+        timeout=settings.llm_timeout_seconds,
         messages=[
             {"role": "system", "content": TEAMS_SUMMARY_SYSTEM},
             {"role": "user",   "content": TEAMS_SUMMARY_USER.format(thread_text=thread_text)},
@@ -81,4 +99,56 @@ def summarise_thread(thread_text: str) -> str:
     content = response.choices[0].message.content
     if not content:
         raise ValueError("LLM returned empty summary")
+    return content.strip()
+
+
+# ---------------------------------------------------------------------------
+# Answer Synthesis (Query Q&A)
+# ---------------------------------------------------------------------------
+
+def synthesize_answer(query: str, documents: list[dict]) -> str:
+    """
+    Generate an answer to the user's query based on retrieved documents.
+
+    Parameters:
+        query: The user's question
+        documents: List of dicts with keys: title, source_type, content
+
+    Returns:
+        Synthesized answer with citations
+
+    Raises:
+        Exception on API error — callers should catch and handle
+    """
+    # Format context from documents
+    context_blocks = []
+    for i, doc in enumerate(documents, 1):
+        title = doc.get("title", "Untitled")
+        source_type = doc.get("source_type", "unknown")
+        content = doc.get("content", "")
+
+        context_blocks.append(
+            f"[Document {i}: {title}]\n"
+            f"Source Type: {source_type}\n"
+            f"Content: {content}\n"
+        )
+
+    context = "\n".join(context_blocks)
+
+    client = get_client()
+    response = client.chat.completions.create(
+        model=settings.azure_openai_deployment_name,
+        max_tokens=1000,
+        temperature=settings.llm_temperature,
+        timeout=settings.llm_timeout_seconds,
+        messages=[
+            {"role": "system", "content": ANSWER_SYSTEM},
+            {"role": "user",   "content": ANSWER_USER.format(context=context, query=query)},
+        ],
+    )
+
+    content = response.choices[0].message.content
+    if not content:
+        raise ValueError("LLM returned empty answer")
+
     return content.strip()
