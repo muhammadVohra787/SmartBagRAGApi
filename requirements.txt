@@ -1,0 +1,65 @@
+# =========================
+# Backend Core
+# =========================
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+httpx==0.25.2
+python-dotenv==1.0.0
+
+# =========================
+# Logging & Utilities
+# =========================
+loguru==0.7.2
+numpy>=1.26,<2.0
+
+# =========================
+# Embedding
+# =========================
+sentence-transformers>=2.6.0
+transformers>=4.38.0
+torch>=2.1,<2.3
+
+# =========================
+# Vector Database
+# =========================
+qdrant-client==1.7.0
+
+# =========================
+# PDF Ingestion
+# =========================
+PyMuPDF==1.23.8
+
+# =========================
+# Markdown Ingestion
+# =========================
+markdown-it-py==3.0.0
+
+# =========================
+# Text Chunking
+# =========================
+langchain-text-splitters==0.0.1
+
+# =========================
+# Azure DevOps
+# =========================
+azure-devops==7.1.0b4
+msrest==0.7.1
+azure-identity==1.15.0
+
+# =========================
+# Microsoft Teams / Graph
+# (Post-MVP ingestion)
+# =========================
+botbuilder-core==4.15.0
+botbuilder-integration-aiohttp==4.15.0
+msgraph-sdk==1.0.0
+html2text==2020.1.16
+tiktoken==0.5.2
+
+# =========================
+# LLM Providers
+# =========================
+anthropic==0.8.1
+openai==1.3.7

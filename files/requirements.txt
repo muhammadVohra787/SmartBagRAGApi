@@ -1,0 +1,100 @@
+# =============================================================================
+# RAG Chatbot Backend — Python Dependencies
+# =============================================================================
+# Install: pip install -r requirements.txt
+#
+# PyTorch (CPU-only) must be installed FIRST separately to avoid pulling the
+# CUDA build (~2.5 GB). Run this before pip install -r requirements.txt:
+#
+#   pip install torch==2.3.0 --index-url https://download.pytorch.org/whl/cpu
+#
+# On the VM you can add this to your bootstrap script.
+# For local dev, run it once in your venv before installing the rest.
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# Web Framework
+# -----------------------------------------------------------------------------
+fastapi==0.111.0
+uvicorn[standard]==0.29.0          # [standard] pulls in websockets + httptools
+python-multipart==0.0.9            # required for FastAPI form/file parsing
+pydantic==2.7.1
+pydantic-settings==2.2.1           # BaseSettings with env file support
+
+
+# -----------------------------------------------------------------------------
+# HTTP Client
+# -----------------------------------------------------------------------------
+httpx==0.27.0                      # async HTTP — used for all outbound API calls
+
+
+# -----------------------------------------------------------------------------
+# Azure OpenAI (LLM)
+# Uses the standard openai SDK — Azure endpoint is configured via env vars
+# -----------------------------------------------------------------------------
+openai==1.30.0
+
+
+# -----------------------------------------------------------------------------
+# Azure DevOps Ingestion
+# -----------------------------------------------------------------------------
+azure-devops==7.1.0b4
+msrest==0.7.1                      # auth helper used by the ADO SDK
+
+
+# -----------------------------------------------------------------------------
+# MS Teams Bot Framework  (post-MVP Teams thread ingestion)
+# Included now so the Teams router can be scaffolded without blocking MVP
+# -----------------------------------------------------------------------------
+botbuilder-core==4.15.0
+botbuilder-integration-aiohttp==4.15.0
+
+
+# -----------------------------------------------------------------------------
+# PDF Ingestion
+# -----------------------------------------------------------------------------
+PyMuPDF==1.24.3                    # fitz — page-level text extraction
+
+
+# -----------------------------------------------------------------------------
+# Markdown Ingestion + Chunking
+# -----------------------------------------------------------------------------
+markdown-it-py==3.0.0              # AST parser — heading boundary detection
+langchain-text-splitters==0.2.0    # MarkdownHeaderTextSplitter + RecursiveCharacterTextSplitter
+                                   # lightweight — does not pull the full langchain stack
+
+
+# -----------------------------------------------------------------------------
+# Embeddings
+# NOTE: install torch CPU build first (see header note above)
+# -----------------------------------------------------------------------------
+sentence-transformers==2.7.0       # BAAI/bge-base-en-v1.5 — 768 dims
+                                   # model downloads on first run (~440 MB)
+                                   # pre-download in CI/Dockerfile with:
+                                   #   python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-base-en-v1.5')"
+
+
+# -----------------------------------------------------------------------------
+# Vector Store
+# -----------------------------------------------------------------------------
+qdrant-client==1.9.1               # official async client — upsert, search, filter, index management
+
+
+# -----------------------------------------------------------------------------
+# HTML Sanitisation  (Teams message bodies arrive as HTML)
+# -----------------------------------------------------------------------------
+html2text==2024.2.26               # converts HTML → clean plain text
+                                   # handles <at>, <a>, <p>, <br>, <attachment>
+
+
+# -----------------------------------------------------------------------------
+# Token Counting  (Teams thread truncation before LLM call)
+# -----------------------------------------------------------------------------
+tiktoken==0.7.0
+
+
+# -----------------------------------------------------------------------------
+# Utilities
+# -----------------------------------------------------------------------------
+python-dotenv==1.0.1               # loads .env.local / .env.dev based on APP_ENV
