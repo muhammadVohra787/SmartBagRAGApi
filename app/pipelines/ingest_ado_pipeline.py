@@ -117,7 +117,7 @@ def _summarise_with_llm(serialised: str) -> str:
 
     client = get_client()
     response = client.chat.completions.create(
-        model=settings.azure_openai_deployment,
+        model=settings.azure_openai_deployment_name,
         max_tokens=600,
         temperature=0.2,
         messages=[

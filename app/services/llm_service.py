@@ -70,7 +70,7 @@ def summarise_thread(thread_text: str) -> str:
     """
     client = get_client()
     response = client.chat.completions.create(
-        model=settings.azure_openai_deployment,
+        model=settings.azure_openai_deployment_name,
         max_tokens=800,
         temperature=0.2,          # low temperature — we want factual extraction, not creativity
         messages=[

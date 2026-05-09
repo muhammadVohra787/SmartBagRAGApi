@@ -1,0 +1,51 @@
+name: Ingest Knowledge Base
+
+# Trigger on push to main or manual workflow dispatch
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'kb/**'
+  workflow_dispatch:
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run batch ingestion
+        env:
+          RUN_MODE: prod
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          EMBEDDING_MODEL: BAAI/bge-base-en-v1.5
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
+        run: |
+          python ingest_batch.py --ci
+
+      - name: Report status
+        if: always()
+        run: |
+          if [ $? -eq 0 ]; then
+            echo "✅ Batch ingestion completed successfully"
+          else
+            echo "❌ Batch ingestion failed"
+            exit 1
+          fi
