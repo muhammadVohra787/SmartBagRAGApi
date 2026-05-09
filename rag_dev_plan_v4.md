@@ -19,6 +19,7 @@ This separation matters for three reasons. First, some users want to find docume
 ## MVP Scope
 
 **In scope for MVP:**
+
 - FastAPI backend on a VM with Qdrant
 - ADO work item ingestion via button in the ADO extension (direct serialisation, no AI summary)
 - PDF and Markdown ingestion via a repo batch script
@@ -31,6 +32,7 @@ This separation matters for three reasons. First, some users want to find docume
 - Retrieval confidence threshold to prevent low-quality answers
 
 **Out of scope for MVP:**
+
 - Teams thread ingestion (post-MVP)
 - AI summary for ADO items (post-MVP)
 - ADO webhook auto-ingest (post-MVP)
@@ -48,6 +50,7 @@ This separation matters for three reasons. First, some users want to find docume
 The identity the bot uses to talk to Microsoft services. Produces a Client ID and a Client Secret. Graph API permissions are declared here and require admin consent from the tenant.
 
 Graph permissions needed:
+
 - `ChannelMessage.Read.All` — read Teams thread messages
 - `Team.ReadBasic.All` — enumerate teams and channels
 - `User.Read.All` — resolve participant display names
@@ -70,7 +73,7 @@ Required to upload the VSIX extension. Set visibility to Private.
 **Personal Access Token (PAT)**
 Scopes: Work Items Read/Write, Service Hooks Read/Write. Stored as an environment variable on the backend VM, never in code.
 
-**ADO Service Hook** *(post-MVP)*
+**ADO Service Hook** _(post-MVP)_
 Triggers automatic ingestion when a work item moves to Resolved or Closed.
 
 **Backend API Key**
@@ -81,6 +84,7 @@ The VSIX extension calls your FastAPI directly from the browser. It sends a stat
 One VM. Minimum 4 vCPU / 16 GB RAM. Ubuntu 22.04 LTS. 128 GB SSD data disk.
 
 Services on the VM:
+
 - FastAPI (behind Nginx)
 - Qdrant (internal only — never exposed publicly)
 - Nginx (reverse proxy, HTTPS)
@@ -88,6 +92,7 @@ Services on the VM:
 Only port 443 is open to the internet.
 
 **Security baseline — add from day one:**
+
 - Nginx request size limit (e.g. 10 MB max body) to prevent accidental large payload uploads
 - Basic rate limiting at the Nginx level (e.g. 10 requests/second per IP) on ingestion endpoints
 - API key validation on all ingestion endpoints before any processing happens
@@ -106,7 +111,7 @@ Only port 443 is open to the internet.
 
 **httpx** — async HTTP client for all outbound calls: MS Graph, ADO REST, LLM providers.
 
-### Ingestion — Teams Threads *(post-MVP)*
+### Ingestion — Teams Threads _(post-MVP)_
 
 **botbuilder-core + botbuilder-integration-aiohttp** — Bot Framework SDK for Python. Handles incoming Teams activities and sends replies.
 
@@ -169,6 +174,7 @@ Dense vector size: `768` (matches bge-base-en-v1.5). If you switch models, this 
 Create these indexes on the collection before any ingestion. They dramatically improve filter performance at query time — without them, Qdrant scans every document for every filtered query.
 
 Indexes needed:
+
 - `source_type` — keyword
 - `work_item_id` — integer
 - `thread_id` — keyword
@@ -181,14 +187,16 @@ Indexes needed:
 
 ## Deterministic Point IDs
 
-Every document stored in Qdrant gets a deterministic string ID based on its source and position. This means an upsert naturally replaces an existing entry without needing a pre-delete scan. It also makes it trivial to look up or delete a specific document by its ID.
+Every document stored in Qdrant gets a deterministic UUID based on its source and position. The UUID is generated using UUID5 (namespace-based hashing) from a logical string ID, ensuring the same input always produces the same UUID. This means an upsert naturally replaces an existing entry without needing a pre-delete scan.
 
-ID format per source type:
+Logical ID format per source type (hashed to UUID5):
 
-- ADO work item: `ado::{work_item_id}` — e.g. `ado::1042`
-- Teams thread: `teams::{thread_id}` — e.g. `teams::19:abc123@thread.v2`
-- PDF chunk: `pdf::{filepath}::{page_number}::{chunk_index}` — e.g. `pdf::docs/onboarding.pdf::3::1`
-- Markdown chunk: `md::{filepath}::{section_slug}::{chunk_index}` — e.g. `md::docs/auth.md::jwt-refresh::0`
+- ADO work item: `ado::{work_item_id}` → UUID5 → e.g. `"3d4f5e6a-7b8c-5d9e-af01-2b3c4d5e6f7a"`
+- Teams thread: `teams::{thread_id}` → UUID5 → e.g. `"8a9b0c1d-2e3f-5a4b-9c5d-6e7f8a9b0c1d"`
+- PDF chunk: `pdf::{filepath}::{page_number}::{chunk_index}` → UUID5
+- Markdown chunk: `md::{filepath}::{section_slug}::{chunk_index}` → UUID5
+
+**Why UUIDs?** Qdrant requires point IDs to be either unsigned integers or UUIDs. Custom string formats are not supported. UUID5 gives us deterministic IDs (same input = same UUID) while meeting Qdrant's requirements.
 
 With deterministic IDs, the delete-then-upsert pattern from earlier versions of this plan is unnecessary. Upserting with the same ID overwrites the existing entry automatically.
 
@@ -228,6 +236,7 @@ When the model is upgraded, bump `embedding_version` to 2. The re-embedding migr
 Every document also includes a `source_priority` integer. This is used later for reranking tie-breaking and answer synthesis — when two documents score similarly, the one with lower priority number wins. Set this now because adding it later requires reindexing everything.
 
 Priority values:
+
 - `pdf`: 1 — authoritative documentation
 - `markdown`: 1 — authoritative documentation
 - `ado`: 2 — work items, closer to ground truth on specific features
@@ -240,6 +249,7 @@ Priority values:
 Every document carries a consistent metadata payload for answer citation and source navigation.
 
 **On every document regardless of source:**
+
 - `source_type` — `teams_thread`, `ado_work_item`, `pdf`, `markdown`
 - `source_uri` — direct URL or file path
 - `title` — human-readable label
@@ -252,6 +262,7 @@ Every document carries a consistent metadata payload for answer citation and sou
 - `source_priority` — integer
 
 **ADO only:**
+
 - `work_item_id`
 - `work_item_type` — Bug, Feature, Task, Epic
 - `work_item_state` — Active, Resolved, Closed
@@ -259,17 +270,20 @@ Every document carries a consistent metadata payload for answer citation and sou
 - `participants` — assignee and commenters
 
 **Teams only:**
+
 - `thread_id`
 - `channel_name`
 - `participants` — all contributors
 
 **PDF only:**
+
 - `filename`
 - `page_number`
 - `total_pages`
 - `chunk_index`
 
 **Markdown only:**
+
 - `filename`
 - `section_heading`
 - `heading_level`
@@ -277,7 +291,7 @@ Every document carries a consistent metadata payload for answer citation and sou
 
 ---
 
-## Teams HTML Sanitisation *(needed for post-MVP Teams ingestion)*
+## Teams HTML Sanitisation _(needed for post-MVP Teams ingestion)_
 
 Teams message bodies arrive from the Graph API as HTML. They must be cleaned before any processing.
 
@@ -288,6 +302,7 @@ Run immediately after fetching messages from Graph, before anything else.
 Configure it to: drop link URLs (keep visible text only), flatten bold/italic to plain text, convert block elements to line breaks.
 
 **Handle these edge cases before html2text runs:**
+
 - Filter out system messages: only process messages where `messageType == "message"`. Ignore `systemEventMessage` (join/leave, call events).
 - After cleaning, discard messages shorter than 10 words — these are acknowledgements or reactions.
 - Messages that are only an attachment with no text body will produce an empty string after cleaning. Skip them.
@@ -354,7 +369,7 @@ Configure it to: drop link URLs (keep visible text only), flatten bold/italic to
 
 ---
 
-### Teams Thread Ingestion *(post-MVP)*
+### Teams Thread Ingestion _(post-MVP)_
 
 **Trigger:** User right-clicks a message in a Teams channel thread and selects "Register in KB" from the `...` context menu (message action).
 
@@ -386,13 +401,14 @@ Both modes use the same retrieval pipeline. They branch only at the response lay
 1. Embed the question using bge-base-en-v1.5.
 2. Search Qdrant for the top 20 most similar documents. Apply metadata filters if implied by the query (e.g. filter by `source_type` or `work_item_state`).
 3. **Confidence threshold check:** if the top result's similarity score is below 0.65, return early with a "No relevant information found" response. Do not pass low-confidence results to the LLM — this is how hallucinations happen.
-4. *(Post-MVP)* Cross-encoder reranker rescores the top 20 using `source_priority` as a tiebreaker. For MVP, take the top 5 directly from Qdrant.
+4. _(Post-MVP)_ Cross-encoder reranker rescores the top 20 using `source_priority` as a tiebreaker. For MVP, take the top 5 directly from Qdrant.
 
 ### Search Mode — `/query/search`
 
 Returns the retrieval results directly. No LLM call.
 
 Response per result:
+
 - Title
 - Source type
 - Short snippet (first 300 characters of the stored content)

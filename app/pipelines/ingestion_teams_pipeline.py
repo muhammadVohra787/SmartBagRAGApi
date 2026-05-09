@@ -41,6 +41,7 @@ assembles a TeamsThreadRaw, and calls this function.
 """
 
 import logging
+import uuid
 
 import html2text
 import tiktoken
@@ -82,7 +83,9 @@ _h2t.unicode_snob      = True    # preserve unicode characters
 # ---------------------------------------------------------------------------
 
 def _point_id(thread_id: str) -> str:
-    return f"teams::{thread_id}"
+    """Generate deterministic UUID from thread ID."""
+    logical_id = f"teams::{thread_id}"
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, logical_id))
 
 
 def _sanitise_html(html_content: str) -> str:

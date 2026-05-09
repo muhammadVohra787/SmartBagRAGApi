@@ -29,6 +29,7 @@ Not a FastAPI route — runs as a standalone script or CI step.
 import hashlib
 import logging
 import os
+import uuid
 
 import fitz  # PyMuPDF
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -77,23 +78,34 @@ def _sha256(file_path: str) -> str:
 
 
 def _point_id(file_path: str, page: int, chunk_index: int) -> str:
-    """Deterministic Qdrant point ID for a PDF chunk."""
-    # Normalise to forward slashes so IDs are consistent across OS.
+    """Generate deterministic UUID from file path, page, and chunk index."""
     normalised = file_path.replace("\\", "/")
-    return f"pdf::{normalised}::{page}::{chunk_index}"
+    logical_id = f"pdf::{normalised}::{page}::{chunk_index}"
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, logical_id))
 
 
 def _probe_existing_hash(file_path: str) -> str | None:
-    """
-    Look up the stored content_hash for page 0, chunk 0 of this file.
-    If that point exists, its hash represents the entire file (all chunks
-    were written in the same ingest run).  Returns None if not found.
-    """
-    probe_id = _point_id(file_path, 0, 0)
-    payload = get_payload_by_id(probe_id)
-    if payload is None:
-        return None
-    return payload.get("content_hash")
+    """Query Qdrant for any chunk from this file to get its content_hash."""
+    from app.stores.qdrant_store import get_client
+    from app.core.settings import settings
+    from qdrant_client.models import Filter, FieldCondition, MatchValue
+
+    normalised = file_path.replace("\\", "/")
+    client = get_client()
+
+    # Search for any point with this source_uri
+    results = client.scroll(
+        collection_name=settings.qdrant_collection_name,
+        scroll_filter=Filter(
+            must=[FieldCondition(key="source_uri", match=MatchValue(value=normalised))]
+        ),
+        limit=1,
+        with_payload=["content_hash"],
+    )
+
+    if results[0]:  # results is tuple (points, next_offset)
+        return results[0][0].payload.get("content_hash")
+    return None
 
 
 # ---------------------------------------------------------------------------

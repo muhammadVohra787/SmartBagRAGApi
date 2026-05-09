@@ -31,6 +31,7 @@ import hashlib
 import logging
 import os
 import re
+import uuid
 
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 
@@ -85,17 +86,34 @@ def _slugify(text: str) -> str:
 
 
 def _point_id(file_path: str, section_slug: str, chunk_index: int) -> str:
+    """Generate deterministic UUID from file path, section, and chunk index."""
     normalised = file_path.replace("\\", "/")
-    return f"md::{normalised}::{section_slug}::{chunk_index}"
+    logical_id = f"md::{normalised}::{section_slug}::{chunk_index}"
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, logical_id))
 
 
 def _probe_existing_hash(file_path: str) -> str | None:
-    """Look up stored hash for section 'root', chunk 0 as a probe."""
-    probe_id = _point_id(file_path, "root", 0)
-    payload = get_payload_by_id(probe_id)
-    if payload is None:
-        return None
-    return payload.get("content_hash")
+    """Query Qdrant for any chunk from this file to get its content_hash."""
+    from app.stores.qdrant_store import get_client
+    from app.core.settings import settings
+    from qdrant_client.models import Filter, FieldCondition, MatchValue
+
+    normalised = file_path.replace("\\", "/")
+    client = get_client()
+
+    # Search for any point with this source_uri
+    results = client.scroll(
+        collection_name=settings.qdrant_collection_name,
+        scroll_filter=Filter(
+            must=[FieldCondition(key="source_uri", match=MatchValue(value=normalised))]
+        ),
+        limit=1,
+        with_payload=["content_hash"],
+    )
+
+    if results[0]:  # results is tuple (points, next_offset)
+        return results[0][0].payload.get("content_hash")
+    return None
 
 
 def _extract_heading_meta(doc_metadata: dict) -> tuple[str, int]:

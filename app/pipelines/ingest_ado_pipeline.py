@@ -32,6 +32,7 @@ The route validates the API key, calls this function, returns the result.
 """
 
 import logging
+import uuid
 
 from app.models import (
     ADOPayload,
@@ -136,7 +137,9 @@ def _summarise_with_llm(serialised: str) -> str:
 # ---------------------------------------------------------------------------
 
 def _point_id(work_item_id: int) -> str:
-    return f"ado::{work_item_id}"
+    """Generate deterministic UUID from work item ID."""
+    logical_id = f"ado::{work_item_id}"
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, logical_id))
 
 
 # ---------------------------------------------------------------------------
