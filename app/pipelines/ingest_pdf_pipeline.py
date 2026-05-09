@@ -26,6 +26,7 @@ The batch ingestion script that walks the knowledge base repo folder.
 Not a FastAPI route — runs as a standalone script or CI step.
 """
 
+import datetime
 import hashlib
 import logging
 import os
@@ -197,6 +198,7 @@ def ingest_pdf(file_path: str) -> BatchIngestionResult:
                 source_uri    = file_path.replace("\\", "/"),
                 title         = f"{filename} — p.{page_num + 1}",
                 content       = chunk_text,
+                date          = datetime.utcnow().isoformat(),
                 content_hash  = current_hash,
                 filename      = filename,
                 page_number   = page_num,

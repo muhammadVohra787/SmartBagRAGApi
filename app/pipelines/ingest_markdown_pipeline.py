@@ -32,6 +32,7 @@ import logging
 import os
 import re
 import uuid
+from datetime import datetime
 
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 
@@ -229,6 +230,7 @@ def ingest_markdown(file_path: str) -> BatchIngestionResult:
             payload = MarkdownPayload(
                 source_uri      = file_path.replace("\\", "/"),
                 title           = f"{filename} — {heading_text}",
+                date            = datetime.utcnow().isoformat(),
                 content         = chunk_text,
                 content_hash    = current_hash,
                 filename        = filename,
