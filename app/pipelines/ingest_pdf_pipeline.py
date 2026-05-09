@@ -216,6 +216,17 @@ def ingest_pdf(file_path: str) -> BatchIngestionResult:
         "PDF ingest complete: %s | ingested=%d skipped=%d near_dupes=%d",
         file_path, chunks_ingested, chunks_skipped, len(all_near_dupes),
     )
+    
+  # If no chunks were ingested, treat as skipped (likely image-only PDF)
+    if chunks_ingested == 0:
+        return BatchIngestionResult(
+            file_path       = file_path,
+            status          = IngestStatus.skipped,
+            chunks_ingested = 0,
+            chunks_skipped  = chunks_skipped,
+            message         = "No extractable text found (image-only or blank PDF).",
+            near_duplicates = all_near_dupes,
+        )
 
     return BatchIngestionResult(
         file_path       = file_path,
