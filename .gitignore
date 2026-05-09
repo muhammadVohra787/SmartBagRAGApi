@@ -5,8 +5,8 @@ venv/
 .env
 
 # Environment Files
-.env.local
-.env.production
+# .env.local
+# .env.dev
 
 # IDE
 .vscode/
