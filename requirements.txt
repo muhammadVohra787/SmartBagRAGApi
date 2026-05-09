@@ -18,9 +18,9 @@ numpy>=1.26,<2.0
 # =========================
 # Embedding
 # =========================
-sentence-transformers>=2.6.0
-transformers>=4.38.0
-torch>=2.1,<2.3
+torch==2.2.2
+transformers==4.41.2
+sentence-transformers==2.7.0
 
 # =========================
 # Vector Database
