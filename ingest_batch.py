@@ -3,17 +3,28 @@
 Batch ingestion script for PDF and Markdown files.
 
 Usage:
-  Local:   python ingest_batch.py
-  CI/CD:   python ingest_batch.py --ci
+  Local (uses .env.local):   python ingest_batch.py
+  Dev (uses .env.dev):       RUN_MODE=dev python ingest_batch.py
+  CI/CD:                     python ingest_batch.py --ci
 
 Walks kb/pdf/ and kb/markdown/ directories, ingests all files.
 Hash comparison ensures we only re-ingest changed files.
+
+Environment:
+  - Reads RUN_MODE env var (defaults to "local")
+  - Loads .env.{RUN_MODE} file automatically via app.core.settings
+  - Only needs Qdrant connection (QDRANT_URL, QDRANT_API_KEY)
 """
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
+
+# Set RUN_MODE before importing app modules (so settings loads correct .env file)
+if "RUN_MODE" not in os.environ:
+    os.environ["RUN_MODE"] = "local"
 
 from app.models import IngestStatus
 from app.pipelines.ingest_pdf_pipeline import ingest_pdf

@@ -9,15 +9,30 @@ This directory contains the source documents for the RAG knowledge base.
 
 ## Ingestion
 
-### Local Ingestion
+### Using PowerShell (Recommended)
+
+```powershell
+# Uses .env.local (default)
+.\ingest.ps1
+
+# Uses .env.dev
+.\ingest.ps1 -Mode dev
+```
+
+### Direct Python
 
 ```bash
-# From project root
+# Uses .env.local (default)
+python ingest_batch.py
+
+# Uses .env.dev
+$env:RUN_MODE="dev"
 python ingest_batch.py
 ```
 
 The script:
 
+- Loads settings from `.env.{RUN_MODE}` (same as run.ps1)
 - Walks `kb/pdf/` and `kb/markdown/` recursively
 - Computes SHA-256 hash of each file
 - Compares against stored hash in Qdrant
@@ -25,14 +40,14 @@ The script:
 - **Ingests new or modified files only**
 - Logs near-duplicates (similarity > 0.93) without deleting
 
-### CI/CD Ingestion
+### What Needs to Be Running?
 
-The GitHub Actions workflow `.github/workflows/ingest.yml` triggers on:
+**Only Qdrant** — that's it!
 
-- Push to `main` branch when files in `kb/` change
-- Manual workflow dispatch
+- ✅ **Qdrant** must be running (Docker or VM)
+- ❌ **FastAPI app** is NOT used for KB ingestion
 
-CI mode (`--ci` flag) exits with code 1 if any file fails ingestion.
+**Note**: The FastAPI app has separate API routes for ADO/Teams ingestion (`/api/ingest/ado`, `/api/ingest/teams`). Those are completely independent from this batch script. KB files are NEVER ingested through the API.
 
 ## File Organization Tips
 

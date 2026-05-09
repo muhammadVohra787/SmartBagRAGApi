@@ -1,0 +1,38 @@
+# Azure DevOps Pipeline - Manual Knowledge Base Ingestion
+# Trigger: Manual only (Run pipeline button in ADO)
+
+trigger: none  # No automatic triggers
+
+pr: none  # Don't run on PRs
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: rag-kb-secrets  # Create this variable group in ADO Library
+
+steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.11'
+      addToPath: true
+    displayName: 'Set up Python 3.11'
+
+  - script: |
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
+    displayName: 'Install dependencies'
+
+  - script: |
+      python ingest_batch.py --ci
+    displayName: 'Run batch ingestion'
+    env:
+      QDRANT_URL: $(QDRANT_URL)
+      QDRANT_API_KEY: $(QDRANT_API_KEY)
+
+  - task: PublishBuildArtifacts@1
+    condition: always()
+    inputs:
+      pathToPublish: '$(Build.ArtifactStagingDirectory)'
+      artifactName: 'ingestion-logs'
+    displayName: 'Publish logs (if any)'
