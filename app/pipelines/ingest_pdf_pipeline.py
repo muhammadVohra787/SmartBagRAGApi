@@ -26,7 +26,7 @@ The batch ingestion script that walks the knowledge base repo folder.
 Not a FastAPI route — runs as a standalone script or CI step.
 """
 
-import datetime
+from datetime import datetime
 import hashlib
 import logging
 import os

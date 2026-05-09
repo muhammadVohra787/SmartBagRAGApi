@@ -2,11 +2,17 @@
   "files.exclude": {
     "**/__init__.py": true,
     "**/venv": true,
-    "**/__pycache__": true
+    "**/__pycache__": true,
+    "**/qdrant_storage": false
   },
   "search.exclude": {
     "**/__init__.py": true,
     "**/venv": true,
-    "**/__pycache__": true
+    "**/__pycache__": true,
+    "**/qdrant_storage": true,
+  },
+  "files.watcherExclude": {
+    "**/qdrant_storage/**": true,
+    "**/kb/pdfs/**": true
   }
 }
