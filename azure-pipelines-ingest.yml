@@ -27,8 +27,8 @@ steps:
       python ingest_batch.py --ci
     displayName: 'Run batch ingestion'
     env:
-      QDRANT_URL: $(QDRANT_URL)
-      QDRANT_API_KEY: $(QDRANT_API_KEY)
+      RUN_MODE: dev
+      AZURE_KEY_VAULT_NAME: $(AZURE_KEY_VAULT_NAME)
 
   - task: PublishBuildArtifacts@1
     condition: always()

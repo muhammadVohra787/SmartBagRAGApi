@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -9,6 +10,8 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parents[2]
+
+log = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -237,6 +240,15 @@ class Settings(BaseSettings):
     )
 
     # ============================================
+    # Azure Key Vault (for dev mode)
+    # ============================================
+
+    azure_key_vault_name: str | None = Field(
+        default=None,
+        alias="AZURE_KEY_VAULT_NAME",
+    )
+
+    # ============================================
     # Computed Properties
     # ============================================
 
@@ -249,14 +261,76 @@ class Settings(BaseSettings):
         return BASE_DIR / self.markdown_directory
 
 
+def _load_secrets_from_key_vault(vault_name: str) -> dict[str, str]:
+    """
+    Load secrets from Azure Key Vault.
+    Returns dict of secret names to values.
+
+    Uses DefaultAzureCredential which supports:
+    - Azure CLI (az login) for local dev
+    - Managed Identity for deployed environments
+    - Environment variables (AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID)
+    """
+    try:
+        from azure.identity import DefaultAzureCredential
+        from azure.keyvault.secrets import SecretClient
+
+        credential = DefaultAzureCredential()
+        vault_url = f"https://{vault_name}.vault.azure.net/"
+        client = SecretClient(vault_url=vault_url, credential=credential)
+
+        # Map Key Vault secret names to environment variable names
+        secret_mappings = {
+            "QDRANT-API-KEY": "QDRANT_API_KEY",
+            "AZURE-OPENAI-API-KEY": "AZURE_OPENAI_API_KEY",
+            "AZURE-OPENAI-ENDPOINT": "AZURE_OPENAI_ENDPOINT",
+            "ADO-PAT": "ADO_PAT",
+            "MICROSOFT-APP-ID": "MICROSOFT_APP_ID",
+            "MICROSOFT-APP-PASSWORD": "MICROSOFT_APP_PASSWORD",
+            "BACKEND-API-KEY": "BACKEND_API_KEY",
+        }
+
+        secrets = {}
+        for kv_name, env_name in secret_mappings.items():
+            try:
+                secret = client.get_secret(kv_name)
+                secrets[env_name] = secret.value
+            except Exception as e:
+                # Secret doesn't exist or no permission - skip it
+                log.warning(f"Could not fetch secret {kv_name} from Key Vault: {e}")
+                continue
+
+        return secrets
+    except Exception as e:
+        log.error(f"Failed to connect to Key Vault {vault_name}: {e}")
+        return {}
+
+
 @lru_cache
 def get_settings() -> Settings:
     run_mode = os.getenv("RUN_MODE", "local")
 
     env_file = BASE_DIR / f".env.{run_mode}"
 
+    # Load base config from .env file
     if env_file.exists():
         load_dotenv(env_file, override=False)
+
+    # If dev mode and Key Vault is configured, pull secrets from Key Vault
+    if run_mode == "dev":
+        vault_name = os.getenv("AZURE_KEY_VAULT_NAME")
+        if vault_name:
+            log.info(f"Loading secrets from Azure Key Vault: {vault_name}")
+            kv_secrets = _load_secrets_from_key_vault(vault_name)
+
+            # Set secrets as environment variables (only if not already set)
+            for key, value in kv_secrets.items():
+                if key not in os.environ:
+                    os.environ[key] = value
+
+            log.info(f"Loaded {len(kv_secrets)} secrets from Key Vault")
+        else:
+            log.warning("Dev mode but AZURE_KEY_VAULT_NAME not set - falling back to .env.dev")
 
     return Settings()
 
