@@ -9,7 +9,7 @@ venv/
 # .env.dev
 
 # IDE
-.vscode/
+# .vscode/
 .idea/
 
 # # Knowledge Base

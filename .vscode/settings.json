@@ -1,0 +1,12 @@
+{
+  "files.exclude": {
+    "**/__init__.py": true,
+    "**/venv": true,
+    "**/__pycache__": true
+  },
+  "search.exclude": {
+    "**/__init__.py": true,
+    "**/venv": true,
+    "**/__pycache__": true
+  }
+}
