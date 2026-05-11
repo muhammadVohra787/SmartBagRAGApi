@@ -57,10 +57,10 @@ from app.ingestion.mass.prompts import (
 )
 from app.ingestion.mass.quality import TeamsQualityResult, score_teams_thread
 from app.models import GraphMessage, IngestStatus, IngestionResult, NearDuplicate, TeamsPayload
-from app.services.embedder import embed_document
-from app.services.llm import get_client
-from app.services.qdrant_store import check_near_duplicates, get_payload_by_id, upsert_point
-from app.config import settings
+from app.services.embedding_service import embed_document
+from app.services.llm_service import get_client
+from app.stores.qdrant_store import check_near_duplicates, get_payload_by_id, upsert_point
+from app.core.settings import settings
 
 log = logging.getLogger(__name__)
 

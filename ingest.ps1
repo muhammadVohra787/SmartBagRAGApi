@@ -6,11 +6,11 @@ param(
 
 $env:RUN_MODE = $Mode
 
-Write-Host "Running ingestion in [$Mode] mode..."
+Write-Host "Running PDF/Markdown ingestion in [$Mode] mode..."
 Write-Host "Using .env.$Mode for configuration"
 Write-Host ""
 
-python ingest_batch.py
+python -m app.ingestion.mass.ingest_pdf_markdown_batch
 
 if ($LASTEXITCODE -ne 0) {
   Write-Host ""

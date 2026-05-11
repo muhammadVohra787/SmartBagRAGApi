@@ -33,12 +33,22 @@ SmartBagRAGApi/
 │   │   ├── enums.py             # Enumerations (IngestStatus, etc)
 │   │   └── constants.py         # Constants (SIMILARITY_DUPE_THRESHOLD, EMBEDDING_DIMS)
 │   │
-│   ├── pipelines/                # Ingestion pipelines
+│   ├── pipelines/                # Basic ingestion pipelines
 │   │   ├── ingest_pdf_pipeline.py       # PDF ingestion (PyMuPDF + chunking)
 │   │   ├── ingest_markdown_pipeline.py  # Markdown ingestion (heading-aware chunking)
 │   │   ├── ingest_ado_pipeline.py       # Azure DevOps work item ingestion
 │   │   ├── ingestion_teams_pipeline.py  # MS Teams thread ingestion
 │   │   └── query_pipeline.py            # Query pipeline (stub, not implemented)
+│   │
+│   ├── ingestion/                # Advanced ingestion & mass ingestion
+│   │   └── mass/                # Mass ingestion with quality gates & LLM
+│   │       ├── __init__.py              # Exports batch ingestion functions
+│   │       ├── prompts.py              # Centralized LLM prompts (ADO & Teams)
+│   │       ├── keywords.py             # Quality gate keyword lists
+│   │       ├── quality.py              # Heuristic quality scoring
+│   │       ├── ado_batch.py            # ADO mass ingestion pipeline
+│   │       ├── teams_batch.py          # Teams mass ingestion pipeline
+│   │       └── ingest_pdf_markdown_batch.py  # PDF/Markdown batch ingestion
 │   │
 │   ├── services/                 # Business logic services
 │   │   ├── embedding_service.py # BGE embedding generation (bge-base-en-v1.5, 768-dim)
@@ -60,7 +70,6 @@ SmartBagRAGApi/
 ├── .env.dev                      # Dev environment config (Azure deployment)
 ├── requirements.txt              # Python dependencies
 ├── docker-compose.qdrant.yml     # Qdrant container setup
-├── ingest_batch.py               # Batch ingestion script (PDFs + Markdown)
 ├── ingest.ps1                    # PowerShell wrapper for batch ingestion
 ├── run.ps1                       # PowerShell server startup script
 ├── rag_dev_plan_v4.md            # Full implementation plan/specification
@@ -95,6 +104,31 @@ SmartBagRAGApi/
 - **Similarity dedup:** Cosine similarity check (threshold: 0.93) to log near-duplicates
 - **Chunking:** 1200 chars + 200 overlap (RecursiveCharacterTextSplitter)
 - **Markdown:** Heading-aware splitting (preserves document hierarchy)
+
+### Mass Ingestion (`app/ingestion/mass/`)
+
+Advanced batch ingestion pipelines with quality gates and LLM-powered summarization.
+
+| File                          | Purpose                              | Quality Gate? | LLM Summary? |
+| ----------------------------- | ------------------------------------ | ------------- | ------------ |
+| `prompts.py`                  | Centralized LLM prompts (ADO & Teams) | N/A          | N/A         |
+| `keywords.py`                 | Quality gate keyword lists (disqualify/noise) | Core | N/A      |
+| `quality.py`                  | Heuristic quality scoring             | Core engine   | Determines LLM usage |
+| `ado_batch.py`                | ADO mass ingestion (resolved bugs)    | ✅ Yes        | ✅ Yes (medium/high tiers) |
+| `teams_batch.py`              | Teams mass ingestion (channel threads) | ✅ Yes        | ✅ Yes (medium/high tiers) |
+| `ingest_pdf_markdown_batch.py` | PDF/Markdown batch ingestion         | ✅ Yes (file-level) | No (basic pipelines used) |
+
+**Quality Tiers (by score):**
+- **Noise** (< 0.25) — Skipped entirely
+- **Low** (0.25–0.44) — Ingested without LLM (heuristic serialization only)
+- **Medium** (0.45–0.69) — Ingested with LLM summary
+- **High** (≥ 0.70) — Ingested with LLM summary, marked as priority
+
+**Key Differences from Basic Pipelines:**
+- Multi-stage quality scoring before embedding (saves compute)
+- Intelligent keyword-based filtering (disqualification + noise scoring)
+- Optional LLM-powered summarization based on quality score
+- Detailed logging of filtering decisions and scoring rationale
 
 ### Services (`app/services/`)
 
@@ -190,7 +224,7 @@ These are defined in `settings.py` but never referenced in code:
 ### Ingestion Flow (PDFs & Markdown)
 
 ```
-1. ingest_batch.py → Walks kb/ directory
+1. app/ingestion/mass/ingest_pdf_markdown_batch.py → Walks kb/ directory
 2. For each file:
    a. Compute SHA-256 hash
    b. Query Qdrant for existing hash (using filter by source_uri)
@@ -296,10 +330,15 @@ Swagger UI: `http://localhost:8844/docs`
 ### 3. Ingest Knowledge Base
 
 ```powershell
-./ingest.ps1 local   # Batch ingest PDFs + Markdown
+./ingest.ps1 local   # Batch ingest PDFs + Markdown (via app/ingestion/mass/ingest_pdf_markdown_batch.py)
 ```
 
 Ingests from `kb/pdf/` and `kb/markdown/` directories.
+
+**Direct Python call:**
+```bash
+python -m app.ingestion.mass.ingest_pdf_markdown_batch
+```
 
 ### 4. Query the System
 
@@ -321,7 +360,61 @@ curl -X POST http://localhost:8844/query/answer `
 
 ---
 
-## Testing
+## Mass Ingestion API
+
+Advanced batch ingestion with quality gates and LLM-powered summarization. Use these when you have:
+- 100s of ADO work items to ingest (with selective LLM summarization)
+- 100s of Teams threads to archive (with quality filtering)
+- Need to tune what gets summarized vs serialized
+
+### ADO Batch Ingestion
+
+```python
+from app.ingestion.mass import ingest_ado_batch
+
+# Fetch items from ADO REST API with ?$expand=all
+items = fetch_from_ado(...)
+
+summary = ingest_ado_batch(
+    items=items,
+    org="https://dev.azure.com/your-org",
+    project="your-project"
+)
+summary.log_summary()  # Prints counts by tier (high/medium/low/noise/errors)
+```
+
+**Quality Tiers for ADO:**
+- Disqualify keywords: "unable to reproduce", "by design", "duplicate", "test ticket", etc.
+- Scoring factors: description length, repro steps, comment count, resolution reason, tags, acceptance criteria
+- Noise keywords: "intermittent", "customer specific", "tbd", "vendor issue", etc.
+
+### Teams Batch Ingestion
+
+```python
+from app.ingestion.mass import ingest_teams_batch
+
+threads = [
+    {
+        "raw_messages": [...],   # Graph API message objects
+        "thread_id": "...",
+        "channel_id": "...",
+        "channel_name": "...",
+        "team_id": "..."
+    },
+    ...
+]
+
+summary = ingest_teams_batch(threads)
+summary.log_summary()  # Prints counts by tier
+```
+
+**Quality Tiers for Teams:**
+- Pre-filter: must have > 1 reply
+- Disqualify keywords: "wrong channel", "moved to", "test message", "meeting invite", etc.
+- Scoring factors: reply count, unique participants, avg message length, technical signals
+- Noise keywords: "fyi only", "heads up", "let's discuss", "agreed", etc.
+
+---
 
 ### Health Check
 
@@ -490,5 +583,5 @@ See `requirements.txt` for full list. Key dependencies:
 
 ---
 
-**Last Updated:** 2026-05-09
-**Version:** 1.0 (MVP Complete)
+**Last Updated:** 2026-05-11
+**Version:** 1.1 (Mass Ingestion Module Added)
