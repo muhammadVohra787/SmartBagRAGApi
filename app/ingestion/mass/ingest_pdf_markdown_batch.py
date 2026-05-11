@@ -3,9 +3,9 @@
 Batch ingestion script for PDF and Markdown files.
 
 Usage:
-  Local (uses .env.local):   python ingest_batch.py
-  Dev (uses .env.dev):       RUN_MODE=dev python ingest_batch.py
-  CI/CD:                     python ingest_batch.py --ci
+  Local (uses .env.local):   python -m app.ingestion.mass.ingest_pdf_markdown_batch
+  Dev (uses .env.dev):       RUN_MODE=dev python -m app.ingestion.mass.ingest_pdf_markdown_batch
+  CI/CD:                     python -m app.ingestion.mass.ingest_pdf_markdown_batch --ci
 
 Walks kb/pdf/ and kb/markdown/ directories, ingests all files.
 Hash comparison ensures we only re-ingest changed files.

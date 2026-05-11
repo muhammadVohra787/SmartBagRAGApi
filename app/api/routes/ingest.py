@@ -6,8 +6,6 @@ POST /api/ingest/teams   — ingest Teams thread (post-MVP, called by message ac
 """
 
 import logging
-from typing import Annotated
-
 from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 
@@ -23,7 +21,7 @@ router = APIRouter(prefix="/ingest", tags=["ingestion"])
 # API key validation
 # ---------------------------------------------------------------------------
 
-def verify_api_key(x_api_key: Annotated[str, Header()]) -> None:
+def verify_api_key(x_api_key: str = Header(...)) -> None:
     """Validate API key from request header."""
     if not settings.backend_api_key:
         raise HTTPException(
