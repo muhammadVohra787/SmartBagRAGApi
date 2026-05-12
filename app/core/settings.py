@@ -227,6 +227,46 @@ class Settings(BaseSettings):
     )
 
     # ============================================
+    # RAG API — Azure AD credentials for mass data pull
+    # Used by MS Graph (Teams) and ADO REST API clients
+    # ============================================
+
+    rag_api_tenant_id: str | None = Field(
+        default=None,
+        alias="RAG_API_TENANT_ID",
+    )
+
+    rag_api_client_id: str | None = Field(
+        default=None,
+        alias="RAG_API_CLIENT_ID",
+    )
+
+    rag_api_client_secret: str | None = Field(
+        default=None,
+        alias="RAG_API_CLIENT_SECRET",
+    )
+
+    rag_api_ado_org: str | None = Field(
+        default=None,
+        alias="RAG_API_ADO_ORG",
+    )
+
+    rag_api_ado_project: str | None = Field(
+        default=None,
+        alias="RAG_API_ADO_PROJECT",
+    )
+
+    rag_api_teams_team_id: str | None = Field(
+        default=None,
+        alias="RAG_API_TEAMS_TEAM_ID",
+    )
+
+    rag_api_teams_channel_id: str | None = Field(
+        default=None,
+        alias="RAG_API_TEAMS_CHANNEL_ID",
+    )
+
+    # ============================================
     # Security
     # ============================================
 

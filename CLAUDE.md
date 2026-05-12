@@ -73,8 +73,44 @@ SmartBagRAGApi/
 ├── ingest.ps1                    # PowerShell wrapper for batch ingestion
 ├── run.ps1                       # PowerShell server startup script
 ├── rag_dev_plan_v4.md            # Full implementation plan/specification
-└── ADO_PIPELINE_SETUP.md         # Azure DevOps CI/CD setup guide
+├── ADO_PIPELINE_SETUP.md         # Azure DevOps CI/CD setup guide
+│
+└── files/                        # 🔄 STAGING FOLDER (files to be relocated)
+    ├── ado.py                   # ➜ Merge into app/models/ado.py
+    ├── ado_batch.py             # ➜ Move to app/ingestion/mass/ado_batch.py
+    ├── auth.py                  # ➜ Move to app/core/auth.py (NEW)
+    ├── config.py                # ➜ Merge into app/core/settings.py
+    ├── graph.py                 # ➜ Merge into app/models/graph.py
+    ├── teams_batch.py           # ➜ Move to app/ingestion/mass/teams_batch.py
+    └── vision.py                # ➜ Move to app/services/vision.py (NEW)
 ```
+
+---
+
+## File Migration Guide
+
+Files in the `files/` folder are ready to be integrated into the codebase. Below shows their target locations and merge/integration strategy:
+
+| Source File         | Target Location              | Action                | Notes                                          |
+| ------------------- | ---------------------------- | --------------------- | ---------------------------------------------- |
+| `ado.py`            | `app/models/ado.py`          | Merge (if exists)     | ADO models — check for duplicates before merge |
+| `ado_batch.py`      | `app/ingestion/mass/`        | Move (overwrite OK)   | ADO mass ingestion — replaces old pipeline     |
+| `auth.py`           | `app/core/auth.py` (NEW)     | Create new file       | API key validation middleware/utilities        |
+| `config.py`         | `app/core/settings.py`       | Merge (if exists)     | Check for existing Pydantic settings class    |
+| `graph.py`          | `app/models/graph.py`        | Merge (if exists)     | MS Graph/Teams models — check for duplicates   |
+| `teams_batch.py`    | `app/ingestion/mass/`        | Move (overwrite OK)   | Teams mass ingestion — replaces old pipeline   |
+| `vision.py`         | `app/services/vision.py`     | Create new file       | Vision/image processing service (post-MVP)    |
+
+**Merge Strategy for Existing Files:**
+- If target file exists, compare imports and class definitions
+- Consolidate duplicate classes into one file
+- Update imports across the codebase to reference merged file
+- Keep function/class names and signatures intact
+
+**Post-migration Cleanup:**
+- Delete the `files/` folder once all files are integrated
+- Run `grep -r "import.*files" --include="*.py"` to ensure no broken imports remain
+- Run tests to verify all integrations work correctly
 
 ---
 
@@ -457,7 +493,7 @@ curl http://localhost:8844/health
 2. **BACKEND_API_KEY returns 500 instead of 401**
    - If API key is not set, ingestion endpoints return HTTP 500
    - Should return HTTP 401 Unauthorized
-   - **Fix:** Add proper null check in `ingest.py:28-33`
+   - **Fix:** Use new `app/core/auth.py` module to validate API key before processing (ready in `files/auth.py`)
 
 3. **Outdated .env.local**
    - Uses deprecated `QDRANT_HOST`/`QDRANT_PORT` variables
@@ -474,7 +510,7 @@ curl http://localhost:8844/health
 5. **Hardcoded configuration**
    - 9 magic numbers that should be env vars
    - Cannot tune without code changes
-   - **Fix:** Extract to settings.py with env var backing
+   - **Fix:** Extract to settings.py with env var backing (new `files/config.py` has structure)
 
 6. **Inconsistent thresholds**
    - Settings defines `DUPLICATE_SIMILARITY_THRESHOLD=0.95`
@@ -531,14 +567,18 @@ curl http://localhost:8844/health
 
 ### Short-term (Next Milestone)
 
+- [ ] **Integrate files from `files/` folder** — merge/move ado.py, ado_batch.py, auth.py, config.py, graph.py, teams_batch.py, vision.py
 - [ ] Add startup validation for critical env vars
-- [ ] Fix BACKEND_API_KEY authentication (return 401 not 500)
+- [ ] Fix BACKEND_API_KEY authentication (use new auth.py middleware to return 401 not 500)
 - [ ] Update .env.local to use QDRANT_URL
 - [ ] Implement usage of existing env vars (MIN_RETRIEVAL_SCORE, MAX_CONTEXT_DOCUMENTS, etc)
 - [ ] Add proper error handling for LLM failures
+- [ ] Enhanced ADO batch ingestion (from `files/ado_batch.py`)
+- [ ] Enhanced Teams batch ingestion (from `files/teams_batch.py`)
 
 ### Medium-term (Post-MVP)
 
+- [ ] Vision service for OCR and image analysis (see `files/vision.py`)
 - [ ] Teams bot integration (message action for thread ingestion)
 - [ ] ADO webhook for auto-ingestion on work item changes
 - [ ] Cross-encoder reranking (improve retrieval quality)

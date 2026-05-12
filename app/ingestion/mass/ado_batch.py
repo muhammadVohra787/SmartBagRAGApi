@@ -133,7 +133,7 @@ def _llm_summary(serialised: str) -> tuple[str, int]:
     """
     client   = get_client()
     response = client.chat.completions.create(
-        model=settings.azure_openai_deployment,
+        model=settings.azure_openai_deployment_name,
         max_tokens=700,
         temperature=0.2,
         response_format={"type": "json_object"},
@@ -275,9 +275,9 @@ def _process_one(
 
     # Upsert directly with the enriched dict (Qdrant accepts any payload)
     from qdrant_client.models import PointStruct
-    from app.services.qdrant_store import get_client as get_qdrant
+    from app.stores.qdrant_store import get_client as get_qdrant
     get_qdrant().upsert(
-        collection_name=settings.qdrant_collection,
+        collection_name=settings.qdrant_collection_name,
         points=[PointStruct(id=point_id, vector=vector, payload=payload_dict)],
     )
 

@@ -16,8 +16,8 @@ from __future__ import annotations
 import base64
 import logging
 
-from app.config import settings
-from app.services.llm import get_client
+from app.core.settings import settings
+from app.services.llm_service import get_client
 
 log = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ def describe_image(
     try:
         client   = get_client()
         response = client.chat.completions.create(
-            model=settings.azure_openai_deployment,
+            model=settings.azure_openai_deployment_name,
             max_tokens=400,
             temperature=0.1,
             messages=[
@@ -139,7 +139,7 @@ def describe_images(
 
     Returns
     -------
-    str   "Attached Images:\n  [img1] description\n  [img2] ..." 
+    str   "Attached Images:\n  [img1] description\n  [img2] ..."
           or "" if no descriptions were generated
     """
     descriptions: list[str] = []

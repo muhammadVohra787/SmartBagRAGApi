@@ -27,7 +27,7 @@ from typing import Iterator
 import httpx
 
 from app.clients.auth import ado_headers
-from app.config import settings
+from app.core.settings import settings
 
 log = logging.getLogger(__name__)
 

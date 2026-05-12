@@ -20,7 +20,7 @@ import time
 
 import httpx
 
-from app.config import settings
+from app.core.settings import settings
 
 log = logging.getLogger(__name__)
 

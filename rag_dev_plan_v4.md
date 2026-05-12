@@ -96,6 +96,8 @@ Only port 443 is open to the internet.
 - Nginx request size limit (e.g. 10 MB max body) to prevent accidental large payload uploads
 - Basic rate limiting at the Nginx level (e.g. 10 requests/second per IP) on ingestion endpoints
 - API key validation on all ingestion endpoints before any processing happens
+- Dedicated `app/core/auth.py` module for API key middleware and validation utilities
+- Backend API key environment variable validation at startup (fail early vs. 500 on ingest call)
 
 ---
 
@@ -158,6 +160,10 @@ Model: `BAAI/bge-base-en-v1.5` — **768 dimensions**.
 **anthropic** — SDK for Claude. Used for Teams thread summarisation and Q&A answer generation.
 
 **openai** — keep available as a fallback. Both sit behind a single abstraction so switching is one config change.
+
+### Vision Processing _(post-MVP)_
+
+**Vision Service** — optional image analysis and OCR capabilities (see `app/services/vision.py` for future implementation). Enables extraction of text from screenshots and diagrams embedded in ingestion sources.
 
 ---
 
